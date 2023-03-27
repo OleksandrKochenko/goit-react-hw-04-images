@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchPhotos } from '../services/api';
 import Searchbar from './searchbar/searchbar';
 import ImageGallery from './image-gallery/gallery';
@@ -7,104 +7,93 @@ import Modal from './modal/modal';
 import Button from './load-button/load-button';
 import './styles.css';
 
-class App extends Component {
-  state = {
-    qValue: '',
-    photos: [],
-    total: 0,
-    page: 1,
-    isLoading: false,
-    modalSource: {
+export default function App() {
+  const [qValue, setQvalue] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalSource, setModalSource] = useState({
+    src: '',
+    alt: '',
+  });
+
+  useEffect(() => {
+    if (qValue === '') {
+      return;
+    }
+    async function fetchData() {
+      setIsLoading(true);
+      const responce = await fetchPhotos(qValue, 1);
+      setPhotos(prevState => {
+        return [...prevState, ...responce.hits];
+      });
+      setIsLoading(false);
+      setTotal(responce.totalHits);
+      setPage(prevState => {
+        return prevState + 1;
+      });
+    }
+    setTimeout(fetchData);
+  }, [qValue]);
+
+  const formSubmitHandler = quieryValue => {
+    if (quieryValue.trim() === '') {
+      alert('Enter a search query');
+    } else {
+      setPhotos([]);
+      setQvalue(quieryValue.trim());
+      setPage(1);
+    }
+  };
+
+  const addPhotos = async () => {
+    setIsLoading(true);
+    const responce = await fetchPhotos(qValue, page);
+    setPhotos(prevState => {
+      return [...prevState, ...responce.hits];
+    });
+    setPage(prevState => {
+      return prevState + 1;
+    });
+    setIsLoading(false);
+  };
+
+  const modalOpener = event => {
+    setModalSource({
+      src: event.currentTarget.dataset.source,
+      alt: event.currentTarget.getAttribute('alt'),
+    });
+  };
+
+  const modalCloser = () => {
+    setModalSource({
       src: '',
       alt: '',
-    },
-  };
-
-  async componentDidUpdate(prevProps, prevState) {
-    if (this.state.qValue && this.state.qValue !== prevState.qValue) {
-      this.setState({
-        isLoading: true,
-      });
-      const responce = await fetchPhotos(this.state.qValue, this.state.page);
-      this.setState(prevState => ({
-        photos: [...prevState.photos, ...responce.hits],
-        total: responce.totalHits,
-        page: prevState.page + 1,
-        isLoading: false,
-      }));
-    }
-  }
-
-  formSubmitHandler = quieryValue => {
-    quieryValue.trim() === ''
-      ? alert('Enter a search query')
-      : this.setState({
-          photos: [],
-          qValue: quieryValue.trim(),
-          page: 1,
-        });
-  };
-
-  addPhotos = async () => {
-    this.setState({
-      isLoading: true,
-    });
-    const responce = await fetchPhotos(this.state.qValue, this.state.page);
-    const newPhotos = responce.hits;
-    this.setState(prevState => ({
-      photos: [...prevState.photos, ...newPhotos],
-      page: prevState.page + 1,
-      isLoading: false,
-    }));
-  };
-
-  modalOpener = event => {
-    this.setState({
-      modalSource: {
-        src: event.currentTarget.dataset.source,
-        alt: event.currentTarget.getAttribute('alt'),
-      },
     });
   };
 
-  modalCloser = () => {
-    this.setState({
-      modalSource: {
-        src: '',
-        alt: '',
-      },
-    });
-  };
+  return (
+    <>
+      <Searchbar onSubmit={formSubmitHandler} />
 
-  render() {
-    return (
-      <>
-        <Searchbar onSubmit={this.formSubmitHandler} />
+      {photos.length > 0 && (
+        <ImageGallery images={photos} openModal={modalOpener} />
+      )}
 
-        {this.state.photos.length > 0 && (
-          <ImageGallery
-            images={this.state.photos}
-            openModal={this.modalOpener}
-          />
-        )}
+      {isLoading && <Loader />}
 
-        {this.state.isLoading && <Loader />}
+      {modalSource.src !== '' && (
+        <Modal
+          onClose={modalCloser}
+          src={modalSource.src}
+          alt={modalSource.alt}
+        />
+      )}
 
-        {this.state.modalSource.src !== '' && (
-          <Modal
-            onClose={this.modalCloser}
-            src={this.state.modalSource.src}
-            alt={this.state.modalSource.alt}
-          />
-        )}
-
-        {this.state.photos.length > 0 &&
-          this.state.photos.length < this.state.total && (
-            <Button onClick={this.addPhotos} />
-          )}
-      </>
-    );
-  }
+      {photos.length > 0 && photos.length < total && (
+        <Button onClick={addPhotos} />
+      )}
+    </>
+  );
 }
-
-export default App;
