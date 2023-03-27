@@ -91,12 +91,11 @@ class App extends Component {
         {this.state.isLoading && <Loader />}
 
         {this.state.modalSource.src !== '' && (
-          <Modal onClose={this.modalCloser}>
-            <img
-              src={this.state.modalSource.src}
-              alt={this.state.modalSource.alt}
-            />
-          </Modal>
+          <Modal
+            onClose={this.modalCloser}
+            src={this.state.modalSource.src}
+            alt={this.state.modalSource.alt}
+          />
         )}
 
         {this.state.photos.length > 0 &&
