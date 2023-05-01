@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import Notiflix from 'notiflix';
 import { fetchPhotos } from '../services/api';
 import Searchbar from './searchbar/searchbar';
 import ImageGallery from './image-gallery/gallery';
 import Loader from './loader/loader';
-import Modal from './modal/modal';
 import Button from './load-button/load-button';
 import './styles.css';
 
@@ -13,15 +13,12 @@ export default function App() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [modalSource, setModalSource] = useState({
-    src: '',
-    alt: '',
-  });
 
   useEffect(() => {
     if (qValue === '') {
       return;
     }
+
     async function fetchData() {
       setIsLoading(true);
       const responce = await fetchPhotos(qValue, 1);
@@ -33,13 +30,21 @@ export default function App() {
       setPage(prevState => {
         return prevState + 1;
       });
+      Notiflix.Notify.success(`Succes! ${responce.totalHits} images was found`);
     }
     setTimeout(fetchData);
   }, [qValue]);
 
+  useEffect(() => {
+    if (total > 0 && total === photos.length) {
+      Notiflix.Notify.info('You have reached the end of search result');
+    }
+    return;
+  }, [total, photos]);
+
   const formSubmitHandler = quieryValue => {
     if (quieryValue.trim() === '') {
-      alert('Enter a search query');
+      Notiflix.Notify.warning('Enter a search query');
     } else {
       setPhotos([]);
       setQvalue(quieryValue.trim());
@@ -59,38 +64,11 @@ export default function App() {
     setIsLoading(false);
   };
 
-  const modalOpener = event => {
-    setModalSource({
-      src: event.currentTarget.dataset.source,
-      alt: event.currentTarget.getAttribute('alt'),
-    });
-  };
-
-  const modalCloser = () => {
-    setModalSource({
-      src: '',
-      alt: '',
-    });
-  };
-
   return (
     <>
       <Searchbar onSubmit={formSubmitHandler} />
-
-      {photos.length > 0 && (
-        <ImageGallery images={photos} openModal={modalOpener} />
-      )}
-
+      {photos.length > 0 && <ImageGallery images={photos} />}
       {isLoading && <Loader />}
-
-      {modalSource.src !== '' && (
-        <Modal
-          onClose={modalCloser}
-          src={modalSource.src}
-          alt={modalSource.alt}
-        />
-      )}
-
       {photos.length > 0 && photos.length < total && (
         <Button onClick={addPhotos} />
       )}
